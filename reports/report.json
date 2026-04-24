@@ -1,0 +1,136 @@
+{
+  "total_patents": 9454161,
+  "top_inventors": [
+    {
+      "name": "Shunpei Yamazaki",
+      "patents": 6787
+    },
+    {
+      "name": "Kia Silverbrook",
+      "patents": 4778
+    },
+    {
+      "name": "Tao Luo",
+      "patents": 4490
+    },
+    {
+      "name": "Jonathan P. Ive",
+      "patents": 2947
+    },
+    {
+      "name": "Junyi Li",
+      "patents": 2881
+    },
+    {
+      "name": "Kangguo Cheng",
+      "patents": 2835
+    },
+    {
+      "name": "Frederick E. Shelton, IV",
+      "patents": 2723
+    },
+    {
+      "name": "Peter Gaal",
+      "patents": 2554
+    },
+    {
+      "name": "Duncan Robert Kerr",
+      "patents": 2534
+    },
+    {
+      "name": "Bartley K. Andre",
+      "patents": 2478
+    }
+  ],
+  "top_companies": [
+    {
+      "name": "SAMSUNG DISPLAY CO., LTD.",
+      "patents": 174536
+    },
+    {
+      "name": "International Business Machines Corporation",
+      "patents": 164083
+    },
+    {
+      "name": "CANON KABUSHIKI KAISHA",
+      "patents": 91331
+    },
+    {
+      "name": "SONY GROUP CORPORATION",
+      "patents": 62911
+    },
+    {
+      "name": "Fujitsu Limited",
+      "patents": 56343
+    },
+    {
+      "name": "Kabushiki Kaisha Toshiba",
+      "patents": 53607
+    },
+    {
+      "name": "Intel Corporation",
+      "patents": 53219
+    },
+    {
+      "name": "General Electric Company",
+      "patents": 52043
+    },
+    {
+      "name": "LG ELECTRONICS INC.",
+      "patents": 50000
+    },
+    {
+      "name": "HITACHI, LTD.",
+      "patents": 46073
+    }
+  ],
+  "patents_per_year": [
+    {
+      "year": 2025,
+      "patents": 378741
+    },
+    {
+      "year": 2024,
+      "patents": 373852
+    },
+    {
+      "year": 2023,
+      "patents": 350093
+    },
+    {
+      "year": 2022,
+      "patents": 360417
+    },
+    {
+      "year": 2021,
+      "patents": 363829
+    },
+    {
+      "year": 2020,
+      "patents": 390572
+    },
+    {
+      "year": 2019,
+      "patents": 392618
+    },
+    {
+      "year": 2018,
+      "patents": 341104
+    },
+    {
+      "year": 2017,
+      "patents": 352587
+    },
+    {
+      "year": 2016,
+      "patents": 334674
+    }
+  ],
+  "top_countries": [
+    {
+      "country": "N/A",
+      "share": 0.0,
+      "note": "Country field not available in source data"
+    }
+  ]
+}
