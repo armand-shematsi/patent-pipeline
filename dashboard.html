@@ -694,30 +694,45 @@ searchInput.addEventListener('keydown', (e) => {
 async function execCmd(cmd) {
   const c = cmd.toLowerCase().trim();
   searchInput.value = cmd;
+  searchInput.style.borderColor = 'var(--accent)';
   
-  if (c.includes('top 5 companies')) {
-    setView('companies', document.querySelector('[onclick*="companies"]'));
-    // Wait for view switch to complete then refine
-    setTimeout(async () => {
+  try {
+    if (c.includes('top 5 companies')) {
+      loaders.companies = true; // Block default loader
+      setView('companies', document.querySelector('button[onclick*="companies"]'));
       const data = await api('/api/companies/top?limit=5');
       buildBarChart('company-chart', data);
-    }, 100);
-  } else if (c.includes('bottom 5 companies')) {
-    setView('companies', document.querySelector('[onclick*="companies"]'));
-    setTimeout(async () => {
+    } else if (c.includes('bottom 5 companies')) {
+      loaders.companies = true;
+      setView('companies', document.querySelector('button[onclick*="companies"]'));
       const res = await postAPI('/api/query', {
         sql: "SELECT name, COUNT(DISTINCT patent_id) AS patents FROM companies WHERE name IS NOT NULL GROUP BY company_id ORDER BY patents ASC LIMIT 5;"
       });
       buildBarChart('company-chart', res.rows);
-    }, 100);
-  } else if (c.includes('top 5 inventors')) {
-    setView('inventors', document.querySelector('[onclick*="inventors"]'));
-    setTimeout(async () => {
+    } else if (c.includes('top 5 inventors')) {
+      loaders.inventors = true;
+      setView('inventors', document.querySelector('button[onclick*="inventors"]'));
       const data = await api('/api/inventors/top?limit=5');
       document.getElementById('inv-tbody').innerHTML = data.map((d,i) => `<tr><td class="mono">${i+1}</td><td>${d.name}</td><td class="mono">${fmt(d.patents)}</td></tr>`).join('');
-    }, 100);
-  } else if (c.includes('patent count')) {
-    setView('overview', document.querySelector('[onclick*="overview"]'));
+    } else if (c.includes('patent count') || c.includes('overview')) {
+      setView('overview', document.querySelector('button[onclick*="overview"]'));
+    } else {
+      // General search fallback: try to find a patent or company by name
+      const res = await postAPI('/api/query', {
+        sql: `SELECT 'Patent' as type, title as name FROM patents WHERE title LIKE '%${cmd}%' LIMIT 3 UNION SELECT 'Company' as type, name FROM companies WHERE name LIKE '%${cmd}%' LIMIT 3`
+      });
+      if (res.rows.length) {
+        alert('Found: ' + res.rows.map(r => `[${r.type}] ${r.name}`).join('\n'));
+      } else {
+        searchInput.style.borderColor = 'var(--danger)';
+        setTimeout(() => searchInput.style.borderColor = '', 2000);
+      }
+    }
+  } catch (e) {
+    console.error('Search error:', e);
+    searchInput.style.borderColor = 'var(--danger)';
+  } finally {
+    setTimeout(() => { if(searchInput.style.borderColor !== 'rgb(239, 68, 68)') searchInput.style.borderColor = ''; }, 1000);
   }
 }
  
