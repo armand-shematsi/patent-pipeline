@@ -129,6 +129,7 @@
       <button class="nav-item" onclick="setView('inventors',this)"><span class="nav-dot"></span>Inventors</button>
       <button class="nav-item" onclick="setView('companies',this)"><span class="nav-dot"></span>Companies</button>
       <button class="nav-item" onclick="setView('trends',this)"><span class="nav-dot"></span>Year Trends</button>
+      <button class="nav-item" onclick="setView('predictions',this)"><span class="nav-dot"></span>ML Predictions</button>
       <div class="nav-label" style="margin-top:12px">Tools</div>
       <button class="nav-item" onclick="setView('query',this)"><span class="nav-dot"></span>SQL Runner</button>
       <button class="nav-item" onclick="setView('joins',this)"><span class="nav-dot"></span>Join Explorer</button>
@@ -270,6 +271,44 @@
             <thead><tr><th>Year</th><th>Patents</th><th>Change</th></tr></thead>
             <tbody id="year-tbody"><tr><td colspan="3" class="loading">loading...</td></tr></tbody>
           </table></div>
+        </div>
+      </div>
+
+      <!-- PREDICTIONS -->
+      <div id="view-predictions" style="display:none">
+        <div class="panel panel-full">
+          <div class="panel-header">
+            <span class="panel-title">Patent Trend Forecast · ML Model (Polynomial Regression)</span>
+            <span class="badge" style="background:rgba(245,158,11,0.1);color:var(--accent3);border-color:rgba(245,158,11,0.2)">Predicted</span>
+          </div>
+          <div class="panel-body">
+            <div class="chart-wrap" style="height:350px"><canvas id="forecast-chart"></canvas></div>
+          </div>
+        </div>
+        <div style="margin-top:16px" class="panels-grid">
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">Upcoming Predictions (Next 5 Years)</span></div>
+            <div class="scrollable">
+              <table class="data-table">
+                <thead><tr><th>Year</th><th>Forecasted Patents</th></tr></thead>
+                <tbody id="forecast-tbody"><tr><td colspan="2" class="loading">loading predictions...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">Model Insights</span></div>
+            <div class="panel-body">
+              <div style="font-size:13px;color:var(--muted);line-height:1.6">
+                <p style="margin-bottom:10px">The forecast is generated using a <strong style="color:var(--text)">Degree-3 Polynomial Regression</strong> model trained on USPTO data from 1976 to present.</p>
+                <p>This model captures non-linear growth patterns and suggests the likely trajectory of global patent filing activity.</p>
+                <div class="query-box" style="margin-top:12px;font-size:11px">
+import sklearn.linear_model
+poly = PolynomialFeatures(degree=3)
+model = LinearRegression().fit(X_poly, y)
+forecast = model.predict(X_next)</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
  
@@ -545,7 +584,69 @@ function setView(view, el) {
   if (view==='inventors' && !loaders.inventors) { loadInventors(); loaders.inventors=true; }
   if (view==='companies' && !loaders.companies) { loadCompanies(); loaders.companies=true; }
   if (view==='trends' && !loaders.trends) { loadTrends(); loaders.trends=true; }
+  if (view==='predictions' && !loaders.predictions) { loadPredictions(); loaders.predictions=true; }
   if (view==='joins' && !loaders.joins) { loadJoins(); loaders.joins=true; }
+}
+
+async function loadPredictions() {
+  try {
+    const data = await api('/api/ml/forecast?years=5');
+    const hist = data.historical;
+    const fore = data.forecast;
+    
+    // Update Table
+    document.getElementById('forecast-tbody').innerHTML = fore.map(f => 
+      `<tr><td style="color:var(--accent3)">${f.year}</td><td class="mono">${fmt(f.patents)}</td></tr>`
+    ).join('');
+
+    // Update Chart
+    const ctx = document.getElementById('forecast-chart');
+    if (charts['forecast-chart']) charts['forecast-chart'].destroy();
+    
+    charts['forecast-chart'] = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [...hist.map(d=>d.year), ...fore.map(d=>d.year)],
+        datasets: [
+          {
+            label: 'Historical',
+            data: hist.map(d=>d.patents),
+            borderColor: '#3b82f6',
+            backgroundColor: 'transparent',
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.3
+          },
+          {
+            label: 'Forecast',
+            data: [...Array(hist.length).fill(null), ...fore.map(d=>d.patents)],
+            borderColor: '#f59e0b',
+            borderDash: [5, 5],
+            backgroundColor: 'rgba(245,158,11,0.1)',
+            borderWidth: 2,
+            pointRadius: 4,
+            pointBackgroundColor: '#f59e0b',
+            fill: true,
+            tension: 0.3
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: '#6b7280', font: { family: 'IBM Plex Mono', size: 10 } } },
+          tooltip: { mode: 'index', intersect: false }
+        },
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#6b7280', font: { size: 10 } } },
+          y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#6b7280', font: { size: 10 }, callback: v => fmtShort(v) } }
+        }
+      }
+    });
+  } catch(e) {
+    document.getElementById('forecast-tbody').innerHTML = `<tr><td colspan="2" class="error-msg">${e.message}</td></tr>`;
+  }
 }
  
 function switchTab(el, targetId) {

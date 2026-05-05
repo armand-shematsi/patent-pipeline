@@ -5,12 +5,15 @@ Run: uvicorn api:app --reload --port 8000
 
 import sqlite3
 import json
+import numpy as np
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
 
 # ── Config ────────────────────────────────────────────────────────────────────
 DB_PATH = Path(__file__).parent / "data" / "patents.db"
@@ -263,3 +266,57 @@ def run_query(body: SQLRequest):
         return {"rows": rows, "count": len(rows)}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# ── ML Forecast ───────────────────────────────────────────────────────────────
+@app.get("/api/ml/forecast")
+def get_forecast(years: int = Query(5, ge=1, le=10)):
+    """
+    Predict future patent trends using Polynomial Regression.
+    Returns historical data combined with predicted values.
+    """
+    # 1. Get historical data (filtered for performance)
+    historical_sql = """
+        SELECT year, COUNT(*) AS patents
+        FROM patents 
+        WHERE year IS NOT NULL AND year >= 1976 AND year <= 2024
+        GROUP BY year 
+        ORDER BY year ASC
+    """
+    data = query(historical_sql)
+    if not data:
+        return {"historical": [], "forecast": []}
+    
+    df = pd.DataFrame(data)
+    
+    # 2. Train Model
+    X = df[['year']].values
+    y = df['patents'].values
+    
+    poly = PolynomialFeatures(degree=3)
+    X_poly = poly.fit_transform(X)
+    
+    model = LinearRegression()
+    model.fit(X_poly, y)
+    
+    # 3. Predict Future
+    last_year = int(df['year'].max())
+    future_years = np.array([[last_year + i] for i in range(1, years + 1)])
+    future_years_poly = poly.transform(future_years)
+    predictions = model.predict(future_years_poly)
+    
+    forecast = []
+    for i, year in enumerate(future_years.flatten()):
+        forecast.append({
+            "year": int(year),
+            "patents": int(max(0, predictions[i])),
+            "is_prediction": True
+        })
+    
+    # Format for chart consumption
+    return {
+        "historical": data,
+        "forecast": forecast
+    }
+
+import pandas as pd
