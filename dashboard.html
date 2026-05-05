@@ -113,6 +113,19 @@
   .api-url-input:focus { border-color:var(--accent); }
   .apply-btn { background:none; border:1px solid var(--border2); border-radius:4px; color:var(--muted); font-family:var(--mono); font-size:11px; padding:4px 10px; cursor:pointer; transition:all .15s; }
   .apply-btn:hover { color:var(--text); border-color:var(--border2); }
+  .apply-btn:hover { color:var(--text); border-color:var(--border2); }
+
+  /* Search Bar */
+  .search-container { position:relative; flex:1; max-width:400px; margin:0 20px; }
+  .search-input { width:100%; background:var(--surface2); border:1px solid var(--border2); border-radius:20px; padding:6px 16px 6px 36px; color:var(--text); font-size:13px; outline:none; transition:all .2s; }
+  .search-input:focus { border-color:var(--accent); background:var(--surface); box-shadow:0 0 0 3px rgba(59,130,246,0.1); }
+  .search-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--muted); pointer-events:none; }
+  .search-hints { position:absolute; top:100%; left:0; right:0; background:var(--surface); border:1px solid var(--border2); border-radius:8px; margin-top:8px; box-shadow:0 10px 25px rgba(0,0,0,0.4); display:none; z-index:100; overflow:hidden; }
+  .search-hints.active { display:block; }
+  .hint-item { padding:10px 14px; cursor:pointer; font-size:12px; display:flex; align-items:center; gap:10px; transition:background .15s; }
+  .hint-item:hover { background:var(--surface2); }
+  .hint-cmd { font-family:var(--mono); color:var(--accent); font-weight:500; }
+  .hint-desc { color:var(--muted); }
 </style>
 </head>
 <body>
@@ -147,6 +160,19 @@
   <div class="main">
     <div class="topbar">
       <div class="topbar-title" id="page-title">Overview</div>
+      
+      <!-- Global Search -->
+      <div class="search-container">
+        <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" class="search-input" id="global-search" placeholder="Search or type a command... (e.g. 'top 5 companies')" autocomplete="off"/>
+        <div class="search-hints" id="search-hints">
+          <div class="hint-item" onclick="execCmd('top 5 companies')"><span class="hint-cmd">top 5 companies</span><span class="hint-desc">Show leading assignees</span></div>
+          <div class="hint-item" onclick="execCmd('bottom 5 companies')"><span class="hint-cmd">bottom 5 companies</span><span class="hint-desc">Show least active assignees</span></div>
+          <div class="hint-item" onclick="execCmd('top 5 inventors')"><span class="hint-cmd">top 5 inventors</span><span class="hint-desc">Show most prolific individuals</span></div>
+          <div class="hint-item" onclick="execCmd('patent count')"><span class="hint-cmd">patent count</span><span class="hint-desc">Show total count</span></div>
+        </div>
+      </div>
+
       <div style="display:flex;align-items:center;gap:12px">
         <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">1976 – 2025</span>
         <span class="badge">SQLite · FastAPI</span>
@@ -646,6 +672,52 @@ async function loadPredictions() {
     });
   } catch(e) {
     document.getElementById('forecast-tbody').innerHTML = `<tr><td colspan="2" class="error-msg">${e.message}</td></tr>`;
+  }
+}
+
+// Quick Commands Logic
+const searchInput = document.getElementById('global-search');
+const searchHints = document.getElementById('search-hints');
+
+searchInput.addEventListener('focus', () => searchHints.classList.add('active'));
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.search-container')) searchHints.classList.remove('active');
+});
+
+searchInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    execCmd(searchInput.value);
+    searchHints.classList.remove('active');
+  }
+});
+
+async function execCmd(cmd) {
+  const c = cmd.toLowerCase().trim();
+  searchInput.value = cmd;
+  
+  if (c.includes('top 5 companies')) {
+    setView('companies', document.querySelector('[onclick*="companies"]'));
+    // Wait for view switch to complete then refine
+    setTimeout(async () => {
+      const data = await api('/api/companies/top?limit=5');
+      buildBarChart('company-chart', data);
+    }, 100);
+  } else if (c.includes('bottom 5 companies')) {
+    setView('companies', document.querySelector('[onclick*="companies"]'));
+    setTimeout(async () => {
+      const res = await postAPI('/api/query', {
+        sql: "SELECT name, COUNT(DISTINCT patent_id) AS patents FROM companies WHERE name IS NOT NULL GROUP BY company_id ORDER BY patents ASC LIMIT 5;"
+      });
+      buildBarChart('company-chart', res.rows);
+    }, 100);
+  } else if (c.includes('top 5 inventors')) {
+    setView('inventors', document.querySelector('[onclick*="inventors"]'));
+    setTimeout(async () => {
+      const data = await api('/api/inventors/top?limit=5');
+      document.getElementById('inv-tbody').innerHTML = data.map((d,i) => `<tr><td class="mono">${i+1}</td><td>${d.name}</td><td class="mono">${fmt(d.patents)}</td></tr>`).join('');
+    }, 100);
+  } else if (c.includes('patent count')) {
+    setView('overview', document.querySelector('[onclick*="overview"]'));
   }
 }
  
