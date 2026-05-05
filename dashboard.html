@@ -126,6 +126,22 @@
   .hint-item:hover { background:var(--surface2); }
   .hint-cmd { font-family:var(--mono); color:var(--accent); font-weight:500; }
   .hint-desc { color:var(--muted); }
+  .hint-desc { color:var(--muted); }
+
+  /* Modal */
+  .modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); display:none; align-items:center; justify-content:center; z-index:1000; backdrop-filter:blur(4px); }
+  .modal-overlay.active { display:flex; }
+  .modal { background:var(--surface); border:1px solid var(--border2); border-radius:12px; width:100%; max-width:600px; max-height:80vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,0.5); }
+  .modal-header { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+  .modal-title { font-size:16px; font-weight:500; }
+  .modal-close { cursor:pointer; color:var(--muted); transition:color .15s; }
+  .modal-close:hover { color:var(--text); }
+  .modal-body { padding:20px; overflow-y:auto; }
+  .detail-val { font-size:32px; font-weight:300; margin-bottom:16px; color:var(--accent); }
+  .sample-list { list-style:none; }
+  .sample-item { padding:8px 0; border-bottom:1px solid var(--border); font-size:13px; display:flex; gap:12px; }
+  .sample-item:last-child { border-bottom:none; }
+  .sample-idx { color:var(--muted); font-family:var(--mono); width:20px; }
 </style>
 </head>
 <body>
@@ -191,25 +207,25 @@
       <!-- OVERVIEW -->
       <div id="view-overview">
         <div class="stats-grid">
-          <div class="stat-card" style="--accent-color:var(--accent)">
+          <div class="stat-card" style="--accent-color:var(--accent);cursor:pointer" onclick="showDetail('Total Patents', 'total_patents', 'patents', 'title')">
             <div class="stat-label">Total Patents</div>
             <div class="stat-value" id="stat-total">—</div>
-            <div class="stat-sub">all years</div>
+            <div class="stat-sub">click for details</div>
           </div>
-          <div class="stat-card" style="--accent-color:var(--accent2)">
+          <div class="stat-card" style="--accent-color:var(--accent2);cursor:pointer" onclick="showDetail('Unique Inventors', 'unique_inventors', 'inventors', 'name')">
             <div class="stat-label">Unique Inventors</div>
             <div class="stat-value" id="stat-inventors">—</div>
-            <div class="stat-sub">across all years</div>
+            <div class="stat-sub">click for details</div>
           </div>
-          <div class="stat-card" style="--accent-color:var(--accent3)">
+          <div class="stat-card" style="--accent-color:var(--accent3);cursor:pointer" onclick="showDetail('Companies Assigned', 'companies', 'companies', 'name')">
             <div class="stat-label">Companies</div>
             <div class="stat-value" id="stat-companies">—</div>
-            <div class="stat-sub">assignees</div>
+            <div class="stat-sub">click for details</div>
           </div>
-          <div class="stat-card" style="--accent-color:var(--accent4)">
+          <div class="stat-card" style="--accent-color:var(--accent4);cursor:pointer" onclick="showDetail('Inventor Countries', 'countries', 'inventors', 'country')">
             <div class="stat-label">Countries</div>
             <div class="stat-value" id="stat-countries">—</div>
-            <div class="stat-sub">inventor origins</div>
+            <div class="stat-sub">click for details</div>
           </div>
         </div>
         <div class="panels-grid">
@@ -382,6 +398,21 @@ ORDER BY patents DESC LIMIT 10;</textarea>
  
     </div><!-- /content -->
   </div><!-- /main -->
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Details</div>
+      <div class="modal-close" onclick="closeModal()">✕</div>
+    </div>
+    <div class="modal-body">
+      <div class="detail-val" id="modal-val">—</div>
+      <div class="panel-title" style="margin-bottom:12px">Samples</div>
+      <div id="modal-samples"></div>
+    </div>
+  </div>
 </div>
  
 <script>
@@ -717,12 +748,19 @@ async function execCmd(cmd) {
     } else if (c.includes('patent count') || c.includes('overview')) {
       setView('overview', document.querySelector('button[onclick*="overview"]'));
     } else {
-      // General search fallback: try to find a patent or company by name
-      const res = await postAPI('/api/query', {
-        sql: `SELECT 'Patent' as type, title as name FROM patents WHERE title LIKE '%${cmd}%' LIMIT 3 UNION SELECT 'Company' as type, name FROM companies WHERE name LIKE '%${cmd}%' LIMIT 3`
+      // Improved General search logic
+      const data = await postAPI('/api/query', {
+        sql: `
+          SELECT 'Patent' as type, title as name, patent_id as info FROM patents WHERE title LIKE '%${cmd}%' LIMIT 5
+          UNION
+          SELECT 'Company' as type, name, '' as info FROM companies WHERE name LIKE '%${cmd}%' LIMIT 5
+          UNION
+          SELECT 'Inventor' as type, name, '' as info FROM inventors WHERE name LIKE '%${cmd}%' LIMIT 5
+        `
       });
-      if (res.rows.length) {
-        alert('Found: ' + res.rows.map(r => `[${r.type}] ${r.name}`).join('\n'));
+      
+      if (data.rows.length) {
+        showSearchResults(cmd, data.rows);
       } else {
         searchInput.style.borderColor = 'var(--danger)';
         setTimeout(() => searchInput.style.borderColor = '', 2000);
@@ -734,6 +772,53 @@ async function execCmd(cmd) {
   } finally {
     setTimeout(() => { if(searchInput.style.borderColor !== 'rgb(239, 68, 68)') searchInput.style.borderColor = ''; }, 1000);
   }
+}
+
+function showSearchResults(query, rows) {
+  document.getElementById('modal-title').textContent = `Search Results for "${query}"`;
+  document.getElementById('modal-val').textContent = `${rows.length} Match${rows.length!==1?'es':''}`;
+  document.getElementById('modal-samples').innerHTML = `
+    <div class="sample-list">
+      ${rows.map((r,i) => `
+        <div class="sample-item">
+          <span class="sample-idx">${i+1}</span>
+          <div>
+            <div style="font-size:11px;color:var(--accent)">${r.type}</div>
+            <div>${r.name}</div>
+            ${r.info ? `<div class="mono" style="font-size:10px">${r.info}</div>` : ''}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  document.getElementById('modal-overlay').classList.add('active');
+}
+
+async function showDetail(title, statKey, table, col) {
+  const stats = await api('/api/stats');
+  const exactVal = stats[statKey];
+  
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-val').textContent = fmt(exactVal);
+  document.getElementById('modal-samples').innerHTML = '<div class="loading">fetching samples...</div>';
+  document.getElementById('modal-overlay').classList.add('active');
+  
+  try {
+    const res = await postAPI('/api/query', {
+      sql: `SELECT DISTINCT ${col} FROM ${table} WHERE ${col} IS NOT NULL AND ${col} != '' LIMIT 10`
+    });
+    document.getElementById('modal-samples').innerHTML = `
+      <div class="sample-list">
+        ${res.rows.map((r,i) => `<div class="sample-item"><span class="sample-idx">${i+1}</span><span>${r[col]}</span></div>`).join('')}
+      </div>
+    `;
+  } catch(e) {
+    document.getElementById('modal-samples').innerHTML = '<div class="error-msg">failed to load samples</div>';
+  }
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('active');
 }
  
 function switchTab(el, targetId) {
