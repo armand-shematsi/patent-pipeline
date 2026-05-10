@@ -77,10 +77,8 @@ python3 -m pip install -r requirements.txt
 3.  **Load DB**: `python3 scripts/load_db.py`
 
 ### 3. Launch Dashboard
-```bash
-# Run the interactive Streamlit app
-python3 -m streamlit run app.py
-```
+- **Static Dashboard**: Open `main.html` in your browser (requires `api.py` to be running).
+- **Streamlit App**: `python3 -m streamlit run app.py`
 
 ---
 

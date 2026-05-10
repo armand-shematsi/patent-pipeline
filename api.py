@@ -320,3 +320,7 @@ def get_forecast(years: int = Query(5, ge=1, le=10)):
     }
 
 import pandas as pd
+import uvicorn
+
+if __name__ == "__main__":
+    uvicorn.run("api:app", host="0.0.0.0", port=8000, reload=True)
