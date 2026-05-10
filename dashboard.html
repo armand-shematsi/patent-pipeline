@@ -155,6 +155,7 @@
     <nav class="sidebar-nav">
       <div class="nav-label">Views</div>
       <button class="nav-item active" onclick="setView('overview',this)"><span class="nav-dot"></span>Overview</button>
+      <button class="nav-item" onclick="setView('geography',this)"><span class="nav-dot"></span>Geography</button>
       <button class="nav-item" onclick="setView('inventors',this)"><span class="nav-dot"></span>Inventors</button>
       <button class="nav-item" onclick="setView('companies',this)"><span class="nav-dot"></span>Companies</button>
       <button class="nav-item" onclick="setView('trends',this)"><span class="nav-dot"></span>Year Trends</button>
@@ -240,6 +241,23 @@
           <div class="panel panel-full">
             <div class="panel-header"><span class="panel-title">Patents per year</span><span class="badge">Q4</span></div>
             <div class="panel-body"><div class="chart-wrap"><canvas id="year-chart"></canvas></div></div>
+          </div>
+        </div>
+      </div>
+ 
+      <!-- GEOGRAPHY -->
+      <div id="view-geography" style="display:none">
+        <div class="panels-grid">
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">Top 10 countries</span><span class="badge">Q3</span></div>
+            <div class="panel-body"><div class="chart-wrap" style="height:280px"><canvas id="country-chart"></canvas></div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">Regional Hubs (Top Cities)</span><span class="badge">Q8</span></div>
+            <div class="scrollable"><table class="data-table">
+              <thead><tr><th>City</th><th>State</th><th>Country</th><th>Patents</th></tr></thead>
+              <tbody id="city-tbody"><tr><td colspan="4" class="loading">loading...</td></tr></tbody>
+            </table></div>
           </div>
         </div>
       </div>
@@ -362,6 +380,7 @@ forecast = model.predict(X_next)</div>
             <div class="query-tags">
               <span class="query-tag" onclick="loadPreset('inv')">top inventors</span>
               <span class="query-tag" onclick="loadPreset('co')">top companies</span>
+              <span class="query-tag" onclick="loadPreset('geo')">top cities</span>
               <span class="query-tag" onclick="loadPreset('yr')">by year</span>
               <span class="query-tag" onclick="loadPreset('cte')">CTE query</span>
               <span class="query-tag" onclick="loadPreset('rank')">ranking</span>
@@ -605,6 +624,7 @@ async function loadJoins() {
 const presets = {
   inv: `SELECT name, COUNT(DISTINCT patent_id) AS patents\nFROM inventors WHERE name != ''\nGROUP BY inventor_id\nORDER BY patents DESC LIMIT 10;`,
   co:  `SELECT name, COUNT(DISTINCT patent_id) AS patents\nFROM companies WHERE name IS NOT NULL\nGROUP BY company_id\nORDER BY patents DESC LIMIT 10;`,
+  geo: `SELECT city, state, country, COUNT(DISTINCT patent_id) AS patents\nFROM inventors WHERE city != ''\nGROUP BY city, state, country\nORDER BY patents DESC LIMIT 10;`,
   yr:  `SELECT year, COUNT(*) AS patent_count\nFROM patents WHERE year IS NOT NULL\nGROUP BY year ORDER BY year DESC LIMIT 20;`,
   cte: `WITH inventor_counts AS (\n  SELECT inventor_id, name, COUNT(DISTINCT patent_id) AS patent_count\n  FROM inventors GROUP BY inventor_id\n)\nSELECT name, patent_count FROM inventor_counts\nWHERE patent_count > 50\nORDER BY patent_count DESC LIMIT 10;`,
   rank:`SELECT name, patent_count,\n       RANK() OVER (ORDER BY patent_count DESC) AS rank\nFROM (\n  SELECT inventor_id, name, COUNT(DISTINCT patent_id) AS patent_count\n  FROM inventors GROUP BY inventor_id\n)\nLIMIT 10;`
@@ -630,7 +650,7 @@ async function runSQL() {
   }
 }
  
-let loaders = { inventors:false, companies:false, trends:false, joins:false };
+let loaders = { geography:false, inventors:false, companies:false, trends:false, joins:false };
  
 function setView(view, el) {
   document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
@@ -638,11 +658,31 @@ function setView(view, el) {
   document.querySelectorAll('[id^="view-"]').forEach(e => e.style.display='none');
   document.getElementById('view-'+view).style.display = 'block';
   document.getElementById('page-title').textContent = el.textContent.trim();
+  if (view==='geography' && !loaders.geography) { loadGeography(); loaders.geography=true; }
   if (view==='inventors' && !loaders.inventors) { loadInventors(); loaders.inventors=true; }
   if (view==='companies' && !loaders.companies) { loadCompanies(); loaders.companies=true; }
   if (view==='trends' && !loaders.trends) { loadTrends(); loaders.trends=true; }
   if (view==='predictions' && !loaders.predictions) { loadPredictions(); loaders.predictions=true; }
   if (view==='joins' && !loaders.joins) { loadJoins(); loaders.joins=true; }
+}
+
+async function loadGeography() {
+  try {
+    const geo = await api('/api/countries/top');
+    renderBarChart('country-chart', geo.map(g => g.country), geo.map(g => g.patents), 'Patents', '#10b981');
+    
+    const cities = await postAPI('/api/query', {
+      sql: "SELECT city, state, country, COUNT(DISTINCT patent_id) AS patents FROM inventors WHERE city != '' GROUP BY city, state, country ORDER BY patents DESC LIMIT 10"
+    });
+    document.getElementById('city-tbody').innerHTML = cities.rows.map(r => `
+      <tr>
+        <td>${r.city}</td>
+        <td>${r.state || '—'}</td>
+        <td class="mono">${r.country}</td>
+        <td class="mono" style="color:var(--accent)">${fmt(r.patents)}</td>
+      </tr>
+    `).join('');
+  } catch(e) { console.error('Geo load failed', e); }
 }
 
 async function loadPredictions() {
