@@ -57,3 +57,10 @@ FROM (
     GROUP BY inventor_id
 )
 LIMIT 10;
+-- Q8: Top Cities (Innovation Hubs)
+SELECT city, state, country, COUNT(DISTINCT patent_id) AS patent_count
+FROM inventors
+WHERE city != '' AND city IS NOT NULL
+GROUP BY city, state, country
+ORDER BY patent_count DESC
+LIMIT 10;

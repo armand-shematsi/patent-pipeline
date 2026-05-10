@@ -30,8 +30,6 @@ patents_per_year = pd.read_sql("""
     GROUP BY year ORDER BY year ASC
 """, conn)
 
-conn.close()
-
 # ── Chart 1: Top 10 Inventors ──────────────────────
 plt.figure(figsize=(12, 6))
 plt.barh(top_inventors["name"][::-1], top_inventors["patents"][::-1], color="steelblue")
@@ -63,5 +61,24 @@ plt.tight_layout()
 plt.savefig(f"{REPORTS}/patents_per_year.png")
 plt.close()
 print("Saved patents_per_year.png")
+
+# ── Chart 4: Top 10 Countries ──────────────────────
+top_countries = pd.read_sql("""
+    SELECT country, COUNT(DISTINCT patent_id) AS patents
+    FROM inventors WHERE country IS NOT NULL AND country != ''
+    GROUP BY country
+    ORDER BY patents DESC LIMIT 10
+""", conn)
+
+plt.figure(figsize=(12, 6))
+plt.barh(top_countries["country"][::-1], top_countries["patents"][::-1], color="forestgreen")
+plt.xlabel("Number of Patents")
+plt.title("Top 10 Countries by Patent Count")
+plt.tight_layout()
+plt.savefig(f"{REPORTS}/top_countries.png")
+plt.close()
+print("Saved top_countries.png")
+
+conn.close()
 
 print("\nAll charts saved to reports/")

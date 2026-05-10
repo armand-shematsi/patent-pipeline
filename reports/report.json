@@ -84,6 +84,48 @@
       "patents": 46073
     }
   ],
+  "top_countries": [
+    {
+      "country": "US",
+      "patents": 4910902
+    },
+    {
+      "country": "JP",
+      "patents": 1559931
+    },
+    {
+      "country": "DE",
+      "patents": 587413
+    },
+    {
+      "country": "KR",
+      "patents": 413681
+    },
+    {
+      "country": "CN",
+      "patents": 403986
+    },
+    {
+      "country": "TW",
+      "patents": 294630
+    },
+    {
+      "country": "GB",
+      "patents": 257000
+    },
+    {
+      "country": "FR",
+      "patents": 241771
+    },
+    {
+      "country": "CA",
+      "patents": 236562
+    },
+    {
+      "country": "CH",
+      "patents": 111307
+    }
+  ],
   "patents_per_year": [
     {
       "year": 2025,
@@ -124,13 +166,6 @@
     {
       "year": 2016,
       "patents": 334674
-    }
-  ],
-  "top_countries": [
-    {
-      "country": "N/A",
-      "share": 0.0,
-      "note": "Country field not available in source data"
     }
   ]
 }

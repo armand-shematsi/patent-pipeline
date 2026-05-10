@@ -62,7 +62,7 @@ def get_stats():
 st.sidebar.title("🤖 Patent Intel")
 st.sidebar.markdown("---")
 view = st.sidebar.radio("Navigate Views", 
-    ["Overview", "Inventors", "Companies", "Trend Forecast", "SQL Runner"]
+    ["Overview", "Geography", "Inventors", "Companies", "Trend Forecast", "SQL Runner"]
 )
 
 # --- GLOBAL SEARCH ---
@@ -142,6 +142,60 @@ if view == "Overview":
                   color_discrete_sequence=['#3b82f6'])
     fig.update_traces(fillcolor='rgba(59,130,246,0.2)')
     st.plotly_chart(fig, use_container_width=True)
+
+# --- VIEW: GEOGRAPHY ---
+elif view == "Geography":
+    st.title("🌍 Geographic Distribution")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("Top Countries by Patent Count")
+        limit = st.slider("Number of countries", 5, 50, 10)
+        df_country = query_db(f"""
+            SELECT country, COUNT(DISTINCT patent_id) as patents 
+            FROM inventors 
+            WHERE country != '' AND country IS NOT NULL
+            GROUP BY country 
+            ORDER BY patents DESC LIMIT {limit}
+        """)
+        fig = px.bar(df_country, x='patents', y='country', orientation='h',
+                     template="plotly_dark", color='patents',
+                     color_continuous_scale='Greens')
+        fig.update_layout(yaxis={'categoryorder':'total ascending'})
+        st.plotly_chart(fig, use_container_width=True)
+
+    with col2:
+        st.subheader("Regional Hubs (City/State)")
+        df_loc = query_db("""
+            SELECT city, state, country, COUNT(DISTINCT patent_id) as patents
+            FROM inventors
+            WHERE city != '' AND country = 'US'
+            GROUP BY city, state
+            ORDER BY patents DESC LIMIT 10
+        """)
+        st.dataframe(df_loc, use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+    st.subheader("Global Patent Map")
+    # Sample some locations for the map to avoid performance issues
+    df_map = query_db("""
+        SELECT l.city, l.country, l.latitude, l.longitude, COUNT(DISTINCT i.patent_id) as patents
+        FROM locations l
+        JOIN inventors i ON l.city = i.city AND l.country = i.country
+        WHERE l.latitude IS NOT NULL AND l.longitude IS NOT NULL
+        GROUP BY l.location_id
+        ORDER BY patents DESC LIMIT 1000
+    """)
+    if not df_map.empty:
+        fig_map = px.scatter_geo(df_map, lat='latitude', lon='longitude', 
+                                 hover_name='city', size='patents',
+                                 projection="natural earth",
+                                 template="plotly_dark",
+                                 title="Top 1,000 Innovation Hubs")
+        st.plotly_chart(fig_map, use_container_width=True)
+    else:
+        st.info("No coordinate data found for mapping.")
 
 # --- VIEW: INVENTORS ---
 elif view == "Inventors":

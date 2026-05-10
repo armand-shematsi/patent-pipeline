@@ -1,4 +1,5 @@
 data/raw/
+data/clean/
 data/*.db
 data/*.db-shm
 data/*.db-wal

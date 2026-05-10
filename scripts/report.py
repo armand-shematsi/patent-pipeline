@@ -24,6 +24,13 @@ top_companies = pd.read_sql("""
     ORDER BY patents DESC LIMIT 10
 """, conn)
 
+top_countries = pd.read_sql("""
+    SELECT country, COUNT(DISTINCT patent_id) AS patents
+    FROM inventors WHERE country IS NOT NULL AND country != ''
+    GROUP BY country
+    ORDER BY patents DESC LIMIT 10
+""", conn)
+
 patents_per_year = pd.read_sql("""
     SELECT year, COUNT(*) AS patents
     FROM patents WHERE year IS NOT NULL
@@ -49,6 +56,10 @@ print("\nTop 10 Companies:")
 for i, row in top_companies.iterrows():
     print(f"  {i+1}. {row['name']} - {row['patents']:,} patents")
 
+print("\nTop 10 Countries:")
+for i, row in top_countries.iterrows():
+    print(f"  {i+1}. {row['country']} - {row['patents']:,} patents")
+
 print("\nPatents Per Year (Recent):")
 for i, row in patents_per_year.iterrows():
     print(f"  {int(row['year'])}: {row['patents']:,} patents")
@@ -58,7 +69,8 @@ print("=" * 52)
 # ── Export CSVs ────────────────────────────────────
 top_inventors.to_csv(f"{REPORTS}/top_inventors.csv", index=False)
 top_companies.to_csv(f"{REPORTS}/top_companies.csv", index=False)
-patents_per_year.to_csv(f"{REPORTS}/country_trends.csv", index=False)
+top_countries.to_csv(f"{REPORTS}/top_countries.csv", index=False)
+patents_per_year.to_csv(f"{REPORTS}/patents_per_year.csv", index=False)
 print("\nCSV reports saved to reports/")
 
 # ── Export JSON ────────────────────────────────────
@@ -66,6 +78,7 @@ report = {
     "total_patents": total_patents,
     "top_inventors": top_inventors.to_dict(orient="records"),
     "top_companies": top_companies.to_dict(orient="records"),
+    "top_countries": top_countries.to_dict(orient="records"),
     "patents_per_year": patents_per_year.to_dict(orient="records")
 }
 with open(f"{REPORTS}/report.json", "w") as f:

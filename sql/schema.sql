@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS patents (
 CREATE TABLE IF NOT EXISTS inventors (
     inventor_id TEXT,
     name        TEXT,
+    city        TEXT,
+    state       TEXT,
     country     TEXT,
     patent_id   TEXT
 );
@@ -19,7 +21,19 @@ CREATE TABLE IF NOT EXISTS inventors (
 CREATE TABLE IF NOT EXISTS companies (
     company_id  TEXT,
     name        TEXT,
+    city        TEXT,
+    state       TEXT,
+    country     TEXT,
     patent_id   TEXT
+);
+
+CREATE TABLE IF NOT EXISTS locations (
+    location_id TEXT PRIMARY KEY,
+    city        TEXT,
+    state       TEXT,
+    country     TEXT,
+    latitude    REAL,
+    longitude   REAL
 );
 
 CREATE TABLE IF NOT EXISTS relationships (

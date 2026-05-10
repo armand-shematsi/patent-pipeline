@@ -25,7 +25,7 @@ def load_to_db():
         conn, 
         f"{CLEAN_DIR}/clean_inventors.csv", 
         "inventors", 
-        ["patent_id", "inventor_id"]
+        ["patent_id", "inventor_id", "country", "city", "state"]
     )
 
     # ── 3. COMPANIES ───────────────────────────────────
@@ -33,7 +33,16 @@ def load_to_db():
         conn, 
         f"{CLEAN_DIR}/clean_companies.csv", 
         "companies", 
-        ["patent_id", "company_id"]
+        ["patent_id", "company_id", "country", "city", "state"]
+    )
+
+    # ── 4. LOCATIONS ───────────────────────────────────
+    load_csv_to_table(
+        conn, 
+        f"{CLEAN_DIR}/clean_locations.csv", 
+        "locations", 
+        ["location_id"],
+        "location_id"
     )
 
     print("\nDatabase loading complete.")
